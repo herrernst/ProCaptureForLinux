@@ -27,6 +27,8 @@ struct xi_v4l2_dev {
     void                        *driver; /* low level card driver */
     void                        *parent_dev;
 
+    char                        driver_name[32];
+
     struct mw_v4l2_channel      *mw_vchs;
     int                         mw_vchs_count;
 };

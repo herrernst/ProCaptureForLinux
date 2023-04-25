@@ -58,7 +58,8 @@ enum XI_CAP_PCI_ID {
     XI_CAP_PCI_DEVICE_ID19              = 0x0026, /* Dual HDMI 4K+ */
     XI_CAP_PCI_DEVICE_ID20              = 0x0027, /* Dual SDI 4K+ */
     XI_CAP_PCI_DEVICE_ID21              = 0x0024, /* HDMI 4K+ TBT */
-
+    XI_CAP_PCI_DEVICE_ID22              = 0x0023, /* Dual AIO */
+    XI_CAP_PCI_DEVICE_ID23              = 0x0028, /* EZ100A */
 };
 
 module_param(debug_level, uint, 00644);
@@ -133,6 +134,8 @@ static const struct pci_device_id xi_cap_pci_tbl[] = {
     { PCI_DEVICE(XI_CAP_PCI_VENDOR_ID, XI_CAP_PCI_DEVICE_ID19) },
     { PCI_DEVICE(XI_CAP_PCI_VENDOR_ID, XI_CAP_PCI_DEVICE_ID20) },
     { PCI_DEVICE(XI_CAP_PCI_VENDOR_ID, XI_CAP_PCI_DEVICE_ID21) },
+    { PCI_DEVICE(XI_CAP_PCI_VENDOR_ID, XI_CAP_PCI_DEVICE_ID22) },
+    { PCI_DEVICE(XI_CAP_PCI_VENDOR_ID, XI_CAP_PCI_DEVICE_ID23) },
     { 0, }
 };
 
@@ -288,12 +291,21 @@ static int xi_cap_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
     }
 
     if ((sizeof(dma_addr_t) > 4) &&
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,18,0)
+            !dma_set_mask(&pdev->dev, DMA_BIT_MASK(64))) {
+#else
             !pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
+#endif
         xi_debug(1, "dma 64 OK!\n");
     } else {
         xi_debug(1, "dma 64 not OK!\n");
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,18,0)
+        if ((dma_set_mask(&pdev->dev, DMA_BIT_MASK(64)) < 0) &&
+                (dma_set_mask(&pdev->dev, DMA_BIT_MASK(32))) < 0) {
+#else
         if ((pci_set_dma_mask(pdev, DMA_BIT_MASK(64)) < 0) &&
                 (pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) < 0) {
+#endif
             xi_debug(0, "DMA configuration failed\n");
             goto disable_pci;
         }
@@ -318,9 +330,9 @@ static int xi_cap_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
     memset(&locking_png, 0, sizeof(locking_png));
     if (nosignal_file != NULL)
         loadPngImage(nosignal_file, &nosignal_png);
-    if (nosignal_file != NULL)
+    if (unsupported_file != NULL)
         loadPngImage(unsupported_file, &unsupported_png);
-    if (nosignal_file != NULL)
+    if (locking_file != NULL)
         loadPngImage(locking_file, &locking_png);
 
     if (init_switch_eeprom && (__pci_get_parent_bridge(pdev) == NULL)) {

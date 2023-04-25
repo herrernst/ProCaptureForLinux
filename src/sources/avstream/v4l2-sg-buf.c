@@ -438,6 +438,7 @@ static void __v4l2_sg_buf_status(struct v4l2_sg_buf *vbuf, struct v4l2_buffer *v
         break;
     case V4L2_SG_BUF_STATE_ERROR:
         v4l2_buf->flags |= V4L2_BUF_FLAG_ERROR;
+        __attribute__ ((__fallthrough__));
         /* fall through */
     case V4L2_SG_BUF_STATE_DONE:
         v4l2_buf->flags |= V4L2_BUF_FLAG_DONE;

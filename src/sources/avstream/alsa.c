@@ -263,6 +263,7 @@ static void _process_audio_frame(
             }
             else
                 asSamples[6] = asSamples[7] = 0;
+            __attribute__ ((__fallthrough__));
         case 5:
         case 6:
             if (wChannelValid & 0x04) {
@@ -271,6 +272,7 @@ static void _process_audio_frame(
             }
             else
                 asSamples[4] = asSamples[5] = 0;
+            __attribute__ ((__fallthrough__));
         case 3:
         case 4:
             if (wChannelValid & 0x02) {
@@ -279,6 +281,7 @@ static void _process_audio_frame(
             }
             else
                 asSamples[2] = asSamples[3] = 0;
+            __attribute__ ((__fallthrough__));
         case 1:
         case 2:
         default:
@@ -675,13 +678,13 @@ struct snd_pcm_ops audio_pcm_capture_ops = {
     .pointer    =   audio_pcm_pointer,
 };
 
-static int alsa_create_pcm(struct snd_card *card, xi_card_driver *drv)
+static int alsa_create_pcm(struct snd_card *card, xi_card_driver *drv, char *driver_name)
 {
     int err;
     struct snd_pcm *pcm;
 
     /* 0: pcm device 0, 0: no playback stream, 1: one capture stream, */
-    err = snd_pcm_new(card, VIDEO_CAP_DRIVER_NAME, 0, 0, 1, &pcm);
+    err = snd_pcm_new(card, driver_name, 0, 0, 1, &pcm);
     if (err < 0)
         return err;
 
@@ -689,12 +692,17 @@ static int alsa_create_pcm(struct snd_card *card, xi_card_driver *drv)
 
     pcm->private_data = drv;
     pcm->info_flags = 0;
-    strcpy(pcm->name, VIDEO_CAP_DRIVER_NAME" PCM");
+    os_strlcpy(pcm->name, driver_name, sizeof(pcm->name));
+    os_strlcat(pcm->name, " PCM", sizeof(pcm->name));
 
     snd_pcm_lib_preallocate_pages_for_all(
             pcm,
             SNDRV_DMA_TYPE_CONTINUOUS,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0))
+			card->dev,
+#else
             snd_dma_continuous_data(GFP_KERNEL),
+#endif
             audio_pcm_hardware.buffer_bytes_max,
             audio_pcm_hardware.buffer_bytes_max
             );
@@ -816,6 +824,7 @@ int alsa_card_init(void *driver, int iChannel, struct snd_card **pcard, void *pa
     int err;
     xi_card_driver *drv;
     struct snd_card  *card;
+    char driver_name[32];
 
     if (audio_devno >= SNDRV_CARDS)
         return (-ENODEV);
@@ -824,6 +833,9 @@ int alsa_card_init(void *driver, int iChannel, struct snd_card **pcard, void *pa
         ++audio_devno;
         return (-ENOENT);
     }
+
+    if (xi_driver_get_family_name(driver, driver_name, sizeof(driver_name)) != 0)
+        os_strlcpy(driver_name, VIDEO_CAP_DRIVER_NAME, sizeof(driver_name));
 
     /*
      * The function allocates snd_card instance via kzalloc
@@ -853,7 +865,7 @@ int alsa_card_init(void *driver, int iChannel, struct snd_card **pcard, void *pa
     drv->driver = driver;
     drv->m_iChannel = iChannel;
 
-    err = alsa_create_pcm(card, drv);
+    err = alsa_create_pcm(card, drv, driver_name);
     if (err < 0)
         goto error;
 
@@ -864,9 +876,9 @@ int alsa_card_init(void *driver, int iChannel, struct snd_card **pcard, void *pa
     if (err < 0)
         goto error;
 
-    strcpy(card->driver, VIDEO_CAP_DRIVER_NAME);
+    os_strlcpy(card->driver, driver_name, sizeof(card->driver));
     if (xi_driver_get_card_name(driver, iChannel, card->shortname, sizeof(card->shortname)) <= 0)
-        strcpy(card->shortname, VIDEO_CAP_DRIVER_NAME);
+        os_strlcpy(card->shortname, driver_name, sizeof(card->shortname));
     strcpy(card->longname, card->shortname);
 
     spin_lock_init(&drv->ring_lock);

@@ -545,11 +545,16 @@ static int vidioc_querycap(struct file *file, void  *priv,
         struct v4l2_capability *cap)
 {
     struct xi_stream_pipe *pipe = file->private_data;
+    char driver_name[32];
+
     xi_debug(5, "entering function %s\n", __func__);
 
-    strcpy(cap->driver, VIDEO_CAP_DRIVER_NAME);
+    if (xi_driver_get_family_name(pipe->mw_vch->driver, driver_name, sizeof(driver_name)) != 0)
+        os_strlcpy(driver_name, VIDEO_CAP_DRIVER_NAME, sizeof(driver_name));
+
+    os_strlcpy(cap->driver, driver_name, sizeof(cap->driver));
     if (xi_driver_get_card_name(pipe->mw_vch->driver, pipe->mw_vch->mw_dev.m_iChannel, cap->card, sizeof(cap->card)) <= 0) {
-        strcpy(cap->card, VIDEO_CAP_DRIVER_NAME);
+        os_strlcpy(cap->card, driver_name, sizeof(cap->card));
     }
     sprintf(cap->bus_info, "PCI:%s", dev_name(pipe->mw_vch->pci_dev));
 
@@ -1394,7 +1399,7 @@ static int xi_open(struct file *file)
     static ssize_t
 xi_read(struct file *file, char __user *data, size_t count, loff_t *ppos)
 {
-    xi_debug(1, VIDEO_CAP_DRIVER_NAME" capture card not support read!\n");
+    xi_debug(1, " capture card not support read!\n");
 
     return -1;
 }
@@ -1657,7 +1662,7 @@ static int xi_v4l2_register_channel(struct xi_v4l2_dev *dev, int iChannel)
 
     *vfd = xi_template;
     if (xi_driver_get_card_name(dev->driver, iChannel, vfd->name, sizeof(vfd->name)) <= 0)
-        snprintf(vfd->name, sizeof(vfd->name), "%s", VIDEO_CAP_DRIVER_NAME);
+        snprintf(vfd->name, sizeof(vfd->name), "%s", dev->driver_name);
     vfd->v4l2_dev = &dev->v4l2_dev;
 
     vch->vfd = vfd;
@@ -1710,8 +1715,11 @@ int xi_v4l2_init(struct xi_v4l2_dev *dev, void *driver, void *parent_dev)
     dev->driver = driver;
     dev->parent_dev = parent_dev;
 
+    if (xi_driver_get_family_name(driver, dev->driver_name, sizeof(dev->driver_name)) != 0)
+        os_strlcpy(dev->driver_name, VIDEO_CAP_DRIVER_NAME, sizeof(dev->driver_name));
+
     snprintf(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name),
-            "%s", VIDEO_CAP_DRIVER_NAME);
+            "%s", dev->driver_name);
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,39))
     /*

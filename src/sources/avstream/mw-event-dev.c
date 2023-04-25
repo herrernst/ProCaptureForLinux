@@ -109,11 +109,11 @@ static int mw_event_dev_release(struct inode *inode, struct file *filp)
 
     down_write(&fh->io_sem);
 
-    mw_event_ioctl_deinit(&fh->mwev);
-
     os_spin_lock(g_dev.fh_lock);
     list_del_init(&fh->list_node);
     os_spin_unlock(g_dev.fh_lock);
+
+    mw_event_ioctl_deinit(&fh->mwev);
 
     os_free(fh);
 

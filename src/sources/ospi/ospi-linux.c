@@ -364,12 +364,7 @@ os_event_t os_event_alloc(void)
     if (event == NULL)
         return NULL;
 
-#ifdef CONFIG_PREEMPT_RT_FULL
-    event->done.done = 0;
-    init_waitqueue_head(&event->done.wait);
-#else
     init_completion(&event->done);
-#endif
 
     return event;
 }
@@ -381,66 +376,24 @@ void os_event_free(os_event_t event)
 
 void os_event_set(os_event_t event)
 {
-#ifdef CONFIG_PREEMPT_RT_FULL
-    unsigned long flags;
-
-    spin_lock_irqsave(&event->done.wait.lock, flags);
-    event->done.done++;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)
-    __wake_up_locked(&event->done.wait, TASK_NORMAL, 1);
-#else
-    __wake_up_locked(&event->done.wait, TASK_NORMAL);
-#endif
-    spin_unlock_irqrestore(&event->done.wait.lock, flags);
-#else /* CONFIG_PREEMPT_RT_FULL */
     complete(&event->done);
-#endif /* CONFIG_PREEMPT_RT_FULL */
 }
 
 void os_event_clear(os_event_t event)
 {
-#ifdef CONFIG_PREEMPT_RT_FULL
-    event->done.done = 0;
-#else
-
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0))
 #  define reinit_completion(x) INIT_COMPLETION(*(x))
 #endif
     reinit_completion(&event->done);
-#endif
 }
 
 bool os_event_is_set(os_event_t event)
 {
-#ifdef CONFIG_PREEMPT_RT_FULL
-    unsigned long flags;
-    int ret = 1;
-
-    spin_lock_irqsave(&event->done.wait.lock, flags);
-    if (!event->done.done)
-        ret = 0;
-    spin_unlock_irqrestore(&event->done.wait.lock, flags);
-    return ret;
-#else
     return completion_done(&event->done);
-#endif
 }
 
 bool os_event_try_wait(os_event_t event)
 {
-#ifdef CONFIG_PREEMPT_RT_FULL
-    unsigned long flags;
-    int ret = 1;
-
-    spin_lock_irqsave(&event->done.wait.lock, flags);
-    if (!event->done.done)
-        ret = 0;
-    else
-        event->done.done = 0;
-    spin_unlock_irqrestore(&event->done.wait.lock, flags);
-
-    return ret;
-#else
     bool ret;
     bool real_ret = false;
 
@@ -451,7 +404,6 @@ bool os_event_try_wait(os_event_t event)
     } while (ret != false);
 
     return real_ret;
-#endif
 }
 
 /* @timeout: -1: wait for ever; 0: no wait; >0: wait for @timeout ms */
@@ -469,7 +421,7 @@ int32_t os_event_wait(os_event_t event, int32_t timeout)
     ret = wait_for_completion_killable_timeout(&event->done, expire);
 
     // clear event
-    while(try_wait_for_completion(&event->done)) {}
+    while(ret > 0 && try_wait_for_completion(&event->done)) {}
 
     if (ret > INT_MAX)
         ret = 1;
@@ -480,7 +432,7 @@ int32_t os_event_wait(os_event_t event, int32_t timeout)
 /* @timeout: -1: wait for ever; 0: no wait; >0: wait for @timeout ms */
 /* @ret: 0 timeout; >0 event occur */
 int32_t os_event_wait_for_multiple(os_event_t events[], int num_events,
-                                   long timeout/* ms */)
+                                   int32_t timeout/* ms */)
 {
     unsigned long expire;
     int i;
@@ -488,16 +440,22 @@ int32_t os_event_wait_for_multiple(os_event_t events[], int num_events,
     int32_t ret = 0;
 
     if (timeout < 0)
-        expire = MAX_SCHEDULE_TIMEOUT;
+        expire = INT_MAX; // MAX_SCHEDULE_TIMEOUT
     else
         expire = msecs_to_jiffies(timeout);
 
     for (i = 0; i < num_events; i++) {
-#if (defined(CONFIG_PREEMPT_RT) && LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)) \
-    || LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+#if (defined(CONFIG_PREEMPT_RT_FULL) && LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)) \
+    || LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0) \
+    || (defined(CONFIG_PREEMPT_RT) && LINUX_VERSION_CODE >= KERNEL_VERSION(5,4,0)) \
+    || defined(OS_RHEL_8_4)
         events[i]->waitq.task = current;
         INIT_LIST_HEAD(&events[i]->waitq.task_list);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4,19,0) && !defined(OS_RHEL_8_4))
+        prepare_to_swait(&events[i]->done.wait, &events[i]->waitq, TASK_KILLABLE);
+#else
         prepare_to_swait_exclusive(&events[i]->done.wait, &events[i]->waitq, TASK_KILLABLE);
+#endif
 #else
         init_waitqueue_entry(&events[i]->waitq, current);
         /* add ourselves into wait queue */
@@ -526,8 +484,10 @@ int32_t os_event_wait_for_multiple(os_event_t events[], int num_events,
         }
     }
 
-#if (defined(CONFIG_PREEMPT_RT) && LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)) \
-    || LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+#if (defined(CONFIG_PREEMPT_RT_FULL) && LINUX_VERSION_CODE >= KERNEL_VERSION(4,4,0)) \
+    || LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0) \
+    || (defined(CONFIG_PREEMPT_RT) && LINUX_VERSION_CODE >= KERNEL_VERSION(5,4,0)) \
+    || defined(OS_RHEL_8_4)
     for (i = 0; i < num_events; i++) {
         finish_swait(&events[i]->done.wait, &events[i]->waitq);
     }

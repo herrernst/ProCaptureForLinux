@@ -98,9 +98,9 @@ static const DWORD g_adwFrameDuration[] = {
 };
 
 enum SDI_PAYLOAD_ID_VALUE {
-    SDI_PAYLOAD_ID_ST291_1_HD_720				= 0x84,
-    SDI_PAYLOAD_ID_ST291_1_HD_1080				= 0x85,
-    SDI_PAYLOAD_ID_ST291_2_DL_HD_3D				= 0xB1,
+    SDI_PAYLOAD_ID_ST292_HD_720					= 0x84,
+    SDI_PAYLOAD_ID_ST292_HD_1080				= 0x85,
+    SDI_PAYLOAD_ID_ST292_DL_HD_3D				= 0xB1,
     SDI_PAYLOAD_ID_ST352_SD						= 0x81,
     SDI_PAYLOAD_ID_ST352_DL_SD					= 0x82,
     SDI_PAYLOAD_ID_ST352_540M					= 0x83,
@@ -158,7 +158,7 @@ typedef union _SMPTE_ST352_PAYLOAD_ID {
         BYTE	byID;
 
         union {
-            // SDI_PAYLOAD_ID_ST291_1_HD_720
+            // SDI_PAYLOAD_ID_ST292_HD_720
             // SDI_PAYLOAD_ID_ST425_1_3GB_DS_720
             struct {
                 BYTE	byPictureRate : 4;			// ST-352
@@ -171,9 +171,9 @@ typedef union _SMPTE_ST352_PAYLOAD_ID {
 
                 BYTE	byBitDepth : 1;				// 1: 10-bit, 0: 8-bit
                 BYTE	byReserved4 : 7;
-            } ST291_1_HD_720;
+            } ST292_HD_720;
 
-            // SDI_PAYLOAD_ID_ST291_1_HD_1080
+            // SDI_PAYLOAD_ID_ST292_HD_1080
             // SDI_PAYLOAD_ID_ST425_1_3GB_DS_1080
             struct {
                 BYTE	byPictureRate : 4;			// ST-352
@@ -189,9 +189,9 @@ typedef union _SMPTE_ST352_PAYLOAD_ID {
 
                 BYTE	byBitDepth : 1;				// 0: 8-bit, 1: 10-bit
                 BYTE	byReserved4 : 7;
-            } ST291_1_HD_1080;
+            } ST292_HD_1080;
 
-            // SDI_PAYLOAD_ID_ST291_2_DL_HD_3D
+            // SDI_PAYLOAD_ID_ST292_DL_HD_3D
             struct {
                 BYTE	byPictureRate : 4;
                 BYTE	byReserved1 : 2;
@@ -208,7 +208,7 @@ typedef union _SMPTE_ST352_PAYLOAD_ID {
                 BYTE	byReserved3 : 2;
                 BYTE	byStreamAssignment : 1;		// 0: Left, 1: Right
                 BYTE	byReserved4 : 1;
-            } ST291_2_DL_HD_3D;
+            } ST292_DL_HD_3D;
 
             // SDI_PAYLOAD_ID_ST352_SD
             struct {

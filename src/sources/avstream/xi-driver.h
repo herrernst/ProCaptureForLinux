@@ -57,6 +57,7 @@ int xi_driver_init(struct xi_driver *pobj, volatile void __iomem *reg_base, os_d
 
 void xi_driver_deinit(struct xi_driver *pobj);
 
+int xi_driver_get_family_name(struct xi_driver *pobj, char *name, size_t size);
 int xi_driver_get_card_name(struct xi_driver *pobj, int iChannel, void *name, size_t size);
 
 void xi_driver_resume(struct xi_driver *pobj,
