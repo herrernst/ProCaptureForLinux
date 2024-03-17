@@ -155,7 +155,11 @@ int mw_event_dev_create(void)
 
     g_dev.c_major = MAJOR(dev_id);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0)
     g_dev.c_class = class_create(THIS_MODULE, MW_EVENT_NAME);
+#else
+    g_dev.c_class = class_create(MW_EVENT_NAME);
+#endif
     if (IS_ERR(g_dev.c_class)) {
         ret = PTR_ERR(g_dev.c_class);
         g_dev.c_class = NULL;
