@@ -167,6 +167,9 @@ int os_mutex_try_lock(os_mutex_t lock);
 #if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,4))
 #define OS_RHEL_8_4
 #endif
+#if (RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,9))
+#define OS_RHEL_8_9
+#endif
 #endif
 
 struct _os_event_t {

@@ -106,10 +106,22 @@ static int _dma_sg_sync_for_device(struct mw_dma_desc *dma_desc)
     return 0;
 }
 
+static int _dma_sg_sync_for_cpu_ex(struct mw_dma_desc *dma_desc, unsigned int offset, unsigned int length)
+{
+    return 0;
+}
+
+static int _dma_sg_sync_for_device_ex(struct mw_dma_desc *dma_desc, unsigned int offset, unsigned int length)
+{
+    return 0;
+}
+
 struct mw_dma_memory_client phy_dma_client = {
     .mem_type               = MWCAP_VIDEO_MEMORY_TYPE_PHYSICAL,
     .create_dma_desc        = _dma_sg_create,
     .destroy_dma_desc       = _dma_sg_destroy,
     .sync_for_cpu           = _dma_sg_sync_for_cpu,
     .sync_for_device        = _dma_sg_sync_for_device,
+    .sync_for_cpu_ex        = _dma_sg_sync_for_cpu_ex,
+    .sync_for_device_ex     = _dma_sg_sync_for_device_ex,
 };

@@ -33,6 +33,16 @@ static inline int mw_dma_memory_sync_for_device(struct mw_dma_desc *desc)
     return desc->client->sync_for_device(desc);
 }
 
+static inline int mw_dma_memory_sync_for_cpu_ex(struct mw_dma_desc *desc, unsigned int offset, unsigned int length)
+{
+    return desc->client->sync_for_cpu_ex(desc, offset, length);
+}
+
+static inline int mw_dma_memory_sync_for_device_ex(struct mw_dma_desc *desc, unsigned int offset, unsigned int length)
+{
+    return desc->client->sync_for_device_ex(desc, offset, length);
+}
+
 int mw_dma_direction_to_os(int mw_direction);
 
 extern struct mw_dma_memory_client kernel_dma_client;

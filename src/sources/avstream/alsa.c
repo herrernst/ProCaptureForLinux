@@ -698,8 +698,10 @@ static int alsa_create_pcm(struct snd_card *card, xi_card_driver *drv, char *dri
     snd_pcm_lib_preallocate_pages_for_all(
             pcm,
             SNDRV_DMA_TYPE_CONTINUOUS,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0))
-			card->dev,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6,1,0)) || \
+    ((LINUX_VERSION_CODE >= KERNEL_VERSION(5,19,0)) && !defined(snd_dma_continuous_data)) || \
+    defined(OS_RHEL_8_9)
+            card->dev,
 #else
             snd_dma_continuous_data(GFP_KERNEL),
 #endif

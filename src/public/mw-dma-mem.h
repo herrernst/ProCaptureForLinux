@@ -54,6 +54,8 @@ struct mw_dma_memory_client {
     int                     (*sync_for_cpu)(struct mw_dma_desc *dma_desc);
     int                     (*sync_for_device)(struct mw_dma_desc *dma_desc);
     void                    (*destroy_dma_desc)(struct mw_dma_desc *dma_desc);
+    int                     (*sync_for_cpu_ex)(struct mw_dma_desc *dma_desc, unsigned int offset, unsigned int length);
+    int                     (*sync_for_device_ex)(struct mw_dma_desc *dma_desc, unsigned int offset, unsigned int length);
 };
 
 int mw_register_dma_memory_client(struct mw_dma_memory_client *client);

@@ -243,10 +243,75 @@ static int _dma_sg_sync_for_device(struct mw_dma_desc *dma_desc)
     return 0;
 }
 
+static void _dma_sg_sync_get_sglist(
+        struct priv_dma_desc *priv_dma,
+        unsigned int offset,
+        unsigned int length,
+        int *sgstart,
+        int *sglen
+        )
+{
+    int i;
+    unsigned int _offset = 0;
+    unsigned int end = offset + length;
+
+    *sgstart = -1;
+    *sglen = -1;
+
+    for (i = 0; i < priv_dma->nr_pages; i++) {
+        if (offset >= _offset + sg_dma_len(&priv_dma->sglist[i])) {
+            continue;
+        }
+        else if (*sgstart < 0) {
+            *sgstart = i;
+            *sglen = 1;
+        }
+        else {
+            (*sglen) += 1;
+            if (end <= _offset + sg_dma_len(&priv_dma->sglist[i]))
+                break;
+        }
+
+        _offset += sg_dma_len(&priv_dma->sglist[i]);
+    }
+}
+
+static int _dma_sg_sync_for_cpu_ex(struct mw_dma_desc *dma_desc, unsigned int offset, unsigned int length)
+{
+    struct priv_dma_desc *priv_dma =
+            (struct priv_dma_desc *)container_of(dma_desc, struct priv_dma_desc, dma_desc);
+    int sgstart;
+    int sglen;
+
+    _dma_sg_sync_get_sglist(priv_dma, offset, length, &sgstart, &sglen);
+
+    dma_sync_sg_for_cpu(priv_dma->dev, &priv_dma->sglist[sgstart],
+            sglen, priv_dma->direction);
+
+    return 0;
+}
+
+static int _dma_sg_sync_for_device_ex(struct mw_dma_desc *dma_desc, unsigned int offset, unsigned int length)
+{
+    struct priv_dma_desc *priv_dma =
+            (struct priv_dma_desc *)container_of(dma_desc, struct priv_dma_desc, dma_desc);
+    int sgstart;
+    int sglen;
+
+    _dma_sg_sync_get_sglist(priv_dma, offset, length, &sgstart, &sglen);
+
+    dma_sync_sg_for_device(priv_dma->dev, priv_dma->sglist,
+            priv_dma->nr_pages, priv_dma->direction);
+
+    return 0;
+}
+
 struct mw_dma_memory_client user_dma_client = {
     .mem_type               = MWCAP_VIDEO_MEMORY_TYPE_USER,
     .create_dma_desc        = _dma_sg_create,
     .destroy_dma_desc       = _dma_sg_destroy,
     .sync_for_cpu           = _dma_sg_sync_for_cpu,
     .sync_for_device        = _dma_sg_sync_for_device,
+    .sync_for_cpu_ex        = _dma_sg_sync_for_cpu_ex,
+    .sync_for_device_ex     = _dma_sg_sync_for_device_ex,
 };

@@ -540,7 +540,11 @@ void os_thread_terminate_self(os_thread_t thread)
 
 void os_thread_wait_and_free(os_thread_t thread)
 {
-    os_event_wait(thread->wait_exit, -1);
+    int32_t ret = -1;
+
+    /* Always wait exit event even if killed. */
+    while (ret <= 0)
+        ret = os_event_wait(thread->wait_exit, -1);
     os_event_free(thread->wait_exit);
     os_free(thread);
 }
@@ -782,7 +786,7 @@ int os_memcmp(const void *s1, const void *s2, unsigned int size)
 
 unsigned int os_strlcpy(char *dst, const char *src, unsigned int size)
 {
-    return strlcpy(dst, src, (size_t)size);
+    return strscpy(dst, src, (size_t)size);
 }
 
 unsigned int os_strlcat(char *dst, const char *src, unsigned int size)
